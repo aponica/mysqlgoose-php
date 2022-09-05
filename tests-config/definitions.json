@@ -1,0 +1,127 @@
+{
+  "//": {
+    "zAuthor": "mysqlgoose-schema-js",
+    "zDatabase": "mysqlgoose_test",
+    "zStamp": "2022-09-01T20:48:09.777Z"
+  },
+  "customer": {
+    "nId": {
+      "zType": "int",
+      "vDefault": null,
+      "nPrecision": 10,
+      "nScale": 0,
+      "bPrimary": true
+    },
+    "zName": {
+      "zType": "varchar",
+      "vDefault": null
+    }
+  },
+  "order": {
+    "dtCreated": {
+      "zType": "timestamp",
+      "vDefault": "CURRENT_TIMESTAMP"
+    },
+    "dtPaid": {
+      "zType": "datetime",
+      "vDefault": null
+    },
+    "nCustomerId": {
+      "zType": "int",
+      "vDefault": null,
+      "nPrecision": 10,
+      "nScale": 0,
+      "hReferences": {
+        "zTable": "customer",
+        "zColumn": "nId"
+      }
+    },
+    "nId": {
+      "zType": "int",
+      "vDefault": null,
+      "nPrecision": 10,
+      "nScale": 0,
+      "bPrimary": true
+    }
+  },
+  "order_product": {
+    "nId": {
+      "zType": "int",
+      "vDefault": null,
+      "nPrecision": 10,
+      "nScale": 0,
+      "bPrimary": true
+    },
+    "nOrderId": {
+      "zType": "int",
+      "vDefault": null,
+      "nPrecision": 10,
+      "nScale": 0,
+      "hReferences": {
+        "zTable": "order",
+        "zColumn": "nId"
+      }
+    },
+    "nProductId": {
+      "zType": "int",
+      "vDefault": null,
+      "nPrecision": 10,
+      "nScale": 0,
+      "hReferences": {
+        "zTable": "product",
+        "zColumn": "nId"
+      }
+    }
+  },
+  "product": {
+    "bDiscontinued": {
+      "zType": "tinyint",
+      "vDefault": "0",
+      "nPrecision": 3,
+      "nScale": 0
+    },
+    "nId": {
+      "zType": "int",
+      "vDefault": null,
+      "nPrecision": 10,
+      "nScale": 0,
+      "bPrimary": true
+    },
+    "nPrice": {
+      "zType": "decimal",
+      "vDefault": null,
+      "nPrecision": 6,
+      "nScale": 2
+    },
+    "zName": {
+      "zType": "varchar",
+      "vDefault": null
+    }
+  },
+  "review": {
+    "bVerified": {
+      "zType": "tinyint",
+      "vDefault": null,
+      "nPrecision": 3,
+      "nScale": 0
+    },
+    "nProductId": {
+      "zType": "int",
+      "vDefault": null,
+      "nPrecision": 10,
+      "nScale": 0,
+      "hReferences": {
+        "zTable": "product",
+        "zColumn": "nId"
+      }
+    },
+    "zText": {
+      "zType": "text",
+      "vDefault": null
+    },
+    "zUser": {
+      "zType": "char",
+      "vDefault": null
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "name": "aponica/mysqlgoose-php",
+  "version": "2.1.0",
+  "description": "MongoDB/MongooseJS-like interface for MySQL relational databases (and probably MariaDB/Oracle/PostgreSQL/SQLServer/etc with some modification)",
+  "homepage" : "https://aponica.com/docs/mysqlgoose-php",
+  "funding": [ { "type": "paypal",
+    "url": "https://www.paypal.com/biz/fund?id=BEHTAS8WARM68" } ],
+  "keywords": [
+    "mysqlgoose",
+    "mysql",
+    "mongodb",
+    "mongoose",
+    "mongoosejs",
+    "database",
+    "rdbms",
+    "mariadb",
+    "postgresql",
+    "sqlserver"
+  ],
+  "type": "library",
+  "license": "MIT",
+  "minimum-stability": "stable",
+  "authors": [
+    { "name": "Opplaud LLC", "email": "dev.support@aponica.com" }
+  ],
+  "require": {
+    "php": ">=8.1"
+  },
+  "autoload": {
+    "files": [
+      "src/Model.php",
+      "src/Mysqlgoose.php",
+      "src/MysqlgooseError.php",
+      "src/Schema.php",
+      "src/Session.php"
+    ],
+    "psr-4": {"Aponica\\Mysqlgoose\\": "src"}
+  }
+}
