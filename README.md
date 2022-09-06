@@ -72,13 +72,11 @@ use Aponica\Mysqlgoose\Schema;
 
 $goose = new Mysqlgoose();
 
-$goose->connect( json_decode( 
-  file_get_contents( 'tests-config/config_mysql.json' ), true ) );
+$goose->connect( json_decode( file_get_contents( 'mysql.json' ), true ) );
 
 $models = [];
 
-$defs = json_decode( 
-  file_get_contents( 'tests-config/definitions.json' ), true );
+$defs = json_decode( file_get_contents( 'definitions.json' ), true );
 
 foreach ( $defs as $table => $def )
 if ( '//' !== $table ) // skip comment member
