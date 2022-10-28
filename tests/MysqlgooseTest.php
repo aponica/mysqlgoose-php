@@ -3,9 +3,6 @@
 // Copyright 2019-2022 Opplaud LLC and other contributors. MIT licensed.
 //=============================================================================
 
-require_once 'src/Model.php';
-require_once 'src/Session.php';
-
 use Aponica\Mysqlgoose\Mysqlgoose;
 use PHPUnit\Framework\TestCase;
 
