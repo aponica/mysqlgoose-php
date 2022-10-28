@@ -35,12 +35,15 @@ final class ModelTest extends TestCase {
     self::$hiModels[ 'review' ]->remove(
       [ 'zText' => [ '$not' => '^test-verified ' ] ] );
 
+    self::$hiModels[ 'review' ]->remove(
+      [ 'zText' => [ '$exists' => false ] ] );
+
     self::$hiModels[ 'order_product' ]->remove( [ 'nId' => [ '$gt' => 1 ] ] );
     self::$hiModels[ 'order' ]->remove( [ 'nId' => [ '$gt' => 1 ] ] );
     self::$hiModels[ 'customer' ]->remove( [ 'nId' => [ '$gt' => 1 ] ] );
     self::$hiModels[ 'product' ]->remove( [ 'nId' => [ '$gt' => 1 ] ] );
 
-    } // setupBeforeClass
+    } // tearDownAfterClass
 
   //---------------------------------------------------------------------------
 
@@ -247,6 +250,162 @@ final class ModelTest extends TestCase {
     self::$hiModels[ 'product' ]->findByIdAndUpdate( 1, [ 'nPrice' => 'xyz' ] );
 
     } // testDecimalHandling
+
+  //---------------------------------------------------------------------------
+
+  public function testFieldOperator(): void {
+
+    //  Greater than.
+
+    $ahResults = self::$hiModels[ 'review' ]->find(
+        [ 'product' => [ 'nId' => 1,
+          'zName' => [ '$gt' => [ '$FIELD' => [ 'review' => 'zUser' ] ] ] ] ] );
+
+    foreach ( $ahResults as $hResult )
+      $this->assertGreaterThan(
+        $hResult[ 'zUser' ], $hResult[ 'product' ][ 'zName' ] );
+
+
+    //  Greater than or equal.
+
+    $ahResults = self::$hiModels[ 'review' ]->find(
+        [ 'product' => [ 'nId' => 1,
+          'zName' => [ '$gte' => [ '$FIELD' => [ 'review' => 'zUser' ] ] ] ] ] );
+
+    foreach ( $ahResults as $hResult )
+      $this->assertGreaterThanOrEqual(
+        $hResult[ 'zUser' ], $hResult[ 'product' ][ 'zName' ] );
+
+
+    //  Less than.
+
+    $ahResults = self::$hiModels[ 'review' ]->find(
+        [ 'product' => [ 'nId' => 1,
+          'zName' => [ '$lt' => [ '$FIELD' => [ 'review' => 'zUser' ] ] ] ] ] );
+
+    foreach ( $ahResults as $hResult )
+      $this->assertLessThan(
+        $hResult[ 'zUser' ], $hResult[ 'product' ][ 'zName' ] );
+
+
+    //  Less than or equal.
+
+    $ahResults = self::$hiModels[ 'review' ]->find(
+        [ 'product' => [ 'nId' => 1,
+          'zName' => [ '$lte' => [ '$FIELD' => [ 'review' => 'zUser' ] ] ] ] ] );
+
+    foreach ( $ahResults as $hResult )
+      $this->assertLessThanOrEqual(
+        $hResult[ 'zUser' ], $hResult[ 'product' ][ 'zName' ] );
+
+
+    //  Add a new product and review with product.zName = review.zText
+    //  as well as significantly-related values for nId and nPrice.
+
+    self::$hiModels[ 'product' ]->create(
+      [ 'nId' => 123, 'zName' => 'zName=zText', 'nPrice' => 249 ] );
+
+    self::$hiModels[ 'review' ]->create(
+      [ 'nProductId' => 123, 'zText' => 'zName=zText' ] );
+
+
+    //  Equal ( default and $eq).
+
+    $ahResults = self::$hiModels[ 'review' ]->find(
+        [ 'zText' => [ '$FIELD' => [ 'product' => 'zName' ] ] ] );
+
+    foreach ( $ahResults as $hResult )
+      $this->assertEquals(
+        $hResult[ 'zText' ], $hResult[ 'product' ][ 'zName' ] );
+
+    $ahResults = self::$hiModels[ 'review' ]->find(
+        [ 'zText' => [ '$eq' => [ '$FIELD' => [ 'product' => 'zName' ] ] ] ] );
+
+    foreach ( $ahResults as $hResult )
+      $this->assertEquals(
+        $hResult[ 'zText' ], $hResult[ 'product' ][ 'zName' ] );
+
+
+    //  Not equal.
+
+    $ahResults = self::$hiModels[ 'review' ]->find( [
+      'zUser' => [ '$ne' => [ '$FIELD' => [ 'product' => 'zName' ] ] ] ] );
+
+    foreach ( $ahResults as $hResult )
+      $this->assertNotEquals(
+        $hResult[ 'zUser' ], $hResult[ 'product' ][ 'zName' ] );
+
+
+    //  $mod.
+
+    $ahResults = self::$hiModels[ 'product' ]->find( [
+      'nPrice' => [ '$mod' => [ [ '$FIELD' => [ 'product' => 'nId' ] ], 3 ] ] ] );
+
+    foreach ( $ahResults as $hResult )
+      $this->assertEquals(
+        3, $hResult[ 'nPrice' ] % $hResult[ 'nId' ] );
+
+    $ahResults = self::$hiModels[ 'product' ]->find( [
+      'nPrice' => [ '$mod' => [ 126, [ '$FIELD' => [ 'product' => 'nId' ] ] ] ] ] );
+
+    foreach ( $ahResults as $hResult )
+      $this->assertEquals(
+        $hResult[ 'nId' ], $hResult[ 'nPrice' ] % 126 );
+
+
+    //  Add a new product and review where product.zName is a regular
+    //  expression that matches on the review text.
+
+    self::$hiModels[ 'product' ]->create(
+      [ 'nId' => 456, 'zName' => '^[X4Y5Z6]+$', 'nPrice' => 249 ] );
+
+    self::$hiModels[ 'review' ]->create(
+      [ 'nProductId' => 456, 'zText' => 'XYZ456' ] );
+
+
+    //  Regular expression.
+
+    $ahResults = self::$hiModels[ 'review' ]->find( [
+      'zText' => [ '$regex' => [ '$FIELD' => [ 'product' => 'zName' ] ] ] ] );
+
+    foreach ( $ahResults as $hResult )
+      $this->assertMatchesRegularExpression(
+        '/' . $hResult[ 'product' ][ 'zName' ] . '/u',
+        $hResult[ 'zText' ] );
+
+
+    //  Negated regular expression.
+
+    $ahResults = self::$hiModels[ 'review' ]->find( [
+      'zText' => [ '$not' => [ '$FIELD' => [ 'product' => 'zName' ] ] ] ] );
+
+    foreach ( $ahResults as $hResult )
+      $this->assertDoesNotMatchRegularExpression(
+        '/' . $hResult[ 'product' ][ 'zName' ] . '/u',
+        $hResult[ 'zText' ] );
+
+    } // testFieldOperator
+
+  //---------------------------------------------------------------------------
+
+  public function testFindAnyOfMany(): void {
+
+    self::$hiModels[ 'product' ]->create(
+      [ 'nId' => 2222, 'zName' => 'FindAnyOfMany' ] );
+
+    $hReview = [ 'nProductId' => 2222, 'zUser' => 'Multiplo' ];
+
+    self::$hiModels[ 'review' ]->create( $hReview );
+
+    $hResult = self::$hiModels[ 'review' ]->create( $hReview );
+
+    $this->assertEquals( $hReview[ 'nProductId' ], $hResult[ 'nProductId' ] );
+    $this->assertEquals( $hReview[ 'zUser' ], $hResult[ 'zUser' ] );
+    $this->assertEquals( null, $hResult[ 'zText' ] );
+    $this->assertEquals( null, $hResult[ 'bVerified' ] );
+
+    } // testFindAnyOfMany
+
 
   //---------------------------------------------------------------------------
 
@@ -556,19 +715,6 @@ final class ModelTest extends TestCase {
 
   //---------------------------------------------------------------------------
 
-  public function testRejectCreateMissingId(): void {
-
-    $this->expectException( Aponica\Mysqlgoose\MysqlgooseError::class );
-
-    $this->expectExceptionMessage( 'missing insert ID' );
-
-    self::$hiModels[ 'review' ]->create( [ 'nProductId' => 1, 'zUser' => 'Miss I. Dee',
-      'zText' => 'added without ID' ] );
-
-    } // testRejectCreateMissingId
-
-  //---------------------------------------------------------------------------
-
   public function testRejectCreateMissingProductId(): void {
 
     $this->expectException( Aponica\Mysqlgoose\MysqlgooseError::class );
@@ -582,6 +728,90 @@ final class ModelTest extends TestCase {
       ] );
 
     } // testRejectCreateMissingProductId
+
+  //---------------------------------------------------------------------------
+
+  public function testRejectFieldOperatorMisused(): void {
+
+    $this->expectException( Aponica\Mysqlgoose\MysqlgooseError::class );
+    $this->expectExceptionMessage( 'unknown column: $FIELD' );
+
+    self::$hiModels[ 'review' ]->find(
+      [ '$FIELD' => [ 'product' => 'nId' ] ] );
+
+    } // testRejectFieldOperatorMisused
+
+  //---------------------------------------------------------------------------
+
+  public function testRejectFieldOperatorNotAlone(): void {
+
+    $this->expectException( Aponica\Mysqlgoose\MysqlgooseError::class );
+    $this->expectExceptionMessage( '$FIELD must be used alone' );
+
+    self::$hiModels[ 'review' ]->find(
+      [ 'nProductId' => [ '$FIELD' => 1, 'extra' => 2 ] ] );
+
+    } // testRejectFieldOperatorNotAlone
+
+  //---------------------------------------------------------------------------
+
+  public function testRejectFieldOperatorNotArray(): void {
+
+    $this->expectException( Aponica\Mysqlgoose\MysqlgooseError::class );
+    $this->expectExceptionMessage( '$FIELD must be an array' );
+
+    self::$hiModels[ 'review' ]->find(
+      [ 'nProductId' => [ '$FIELD' => null ] ] );
+
+    } // testRejectFieldOperatorNotArray
+
+  //---------------------------------------------------------------------------
+
+  public function testRejectFieldOperatorTwoMembers(): void {
+
+    $this->expectException( Aponica\Mysqlgoose\MysqlgooseError::class );
+    $this->expectExceptionMessage( '$FIELD must have one member' );
+
+    self::$hiModels[ 'review' ]->find(
+      [ 'nProductId' => [ '$FIELD' => [ 'a' => 1, 'b' => 2 ] ] ] );
+
+    } // testRejectFieldOperatorTwoMembers
+
+  //---------------------------------------------------------------------------
+
+  public function testRejectFieldOperatorUnknownColumn(): void {
+
+    $this->expectException( Aponica\Mysqlgoose\MysqlgooseError::class );
+    $this->expectExceptionMessage( '$FIELD: unknown column: product.x' );
+
+    self::$hiModels[ 'review' ]->find(
+      [ 'nProductId' => [ '$FIELD' => [ 'product' => 'x' ] ] ] );
+
+    } // testRejectFieldOperatorUnknownColumn
+
+  //---------------------------------------------------------------------------
+
+  public function testRejectFieldOperatorUnknownModel(): void {
+
+    $this->expectException( Aponica\Mysqlgoose\MysqlgooseError::class );
+    $this->expectExceptionMessage( '$FIELD: unknown model: x' );
+
+    self::$hiModels[ 'review' ]->find(
+      [ 'nProductId' => [ '$FIELD' => [ 'x' => 1 ] ] ] );
+
+    } // testRejectFieldOperatorUnknownModel
+
+  //---------------------------------------------------------------------------
+
+  public function testRejectFieldOperatorZeroMembers(): void {
+
+    $this->expectException( Aponica\Mysqlgoose\MysqlgooseError::class );
+    $this->expectExceptionMessage( '$FIELD must have one member' );
+
+    self::$hiModels[ 'review' ]->find(
+      [ 'nProductId' => [ '$FIELD' => [] ] ] );
+
+    } // testRejectFieldOperatorZeroMembers
 
   //---------------------------------------------------------------------------
 
