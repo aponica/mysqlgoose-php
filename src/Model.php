@@ -131,6 +131,86 @@ class Model {
 
 
   //---------------------------------------------------------------------------
+  /// Adds a right-hand-side to a statement.
+  ///
+  /// @param $vValue
+  ///   The value to be added to the right hand side. If the value is a
+  ///   "$FIELD" specifier, then the field's existence is verified and its
+  ///   fully-qualified name is added to the WHERE clause. Otherwise, a
+  ///   placeholder is added to the WHERE clause and the value (cast for
+  ///   binding) is added to the values array.
+  ///
+  ///   A "$FIELD" specifier is a hash (associative array) containing
+  ///   exactly one member with the key "$FIELD", the value for which is
+  ///   also a hash with one member, in which the key is the name of a
+  ///   table (model) and the value is the name of a column in it.
+  ///   For example, to specify that the left-hand-side should be
+  ///   compared to column "id" in table "foo", use specifier:
+  ///
+  ///       `[ '$FIELD' => [ 'foo' => 'id' ] ]`
+  ///
+  /// @param $vContext
+  ///   The context.
+  ///
+  /// @param $hStmt
+  ///   The statement so far.
+  ///
+  /// @returns array:
+  ///   The modified `$hStmt`.
+  //---------------------------------------------------------------------------
+
+  private static function fhAddValue(
+    mixed $vValue, mixed $vContext, array $hStmt ) : array {
+
+    if ( is_array( $vValue ) && array_key_exists( '$FIELD', $vValue ) )
+        { // field specifier
+
+        foreach ( $vValue as $zName => $zValue )
+          if ( '$FIELD' !== $zName )
+            throw new MysqlgooseError( '$FIELD must be used alone' );
+
+        if ( ! is_array( $vValue[ '$FIELD' ] ) )
+          throw new MysqlgooseError( '$FIELD must be an array' );
+
+        if ( 1 !== count( $vValue[ '$FIELD' ] ) )
+          throw new MysqlgooseError( '$FIELD must have one member' );
+
+        $zModel = array_key_first( $vValue[ '$FIELD' ] );
+
+        $zColumnName = $vValue[ '$FIELD' ][ $zModel ];
+
+        if ( ! array_key_exists( $zModel, self::$hiModels ) )
+          throw new MysqlgooseError( '$FIELD: unknown model: ' . $zModel );
+
+        $iModel = self::$hiModels[ $zModel ];
+
+        if ( ! array_key_exists( $zColumnName, $iModel->iSchema->hhColDefs ) )
+          throw new MysqlgooseError(
+            '$FIELD: unknown column: ' . "$zModel.$zColumnName" );
+
+        $hStmt[ 'zWhere' ] .= ' ' . self::fzQualifiedColumnName(
+          [ 'iModel' => $iModel, 'zColumnName' => $zColumnName ]  );
+
+        if ( ! in_array( $zModel, $hStmt[ 'azPopulate' ] ) )
+          $hStmt[ 'azPopulate' ][] = $iModel->zSafeTableName;
+
+        } // field specifier
+
+    else { // normal value
+
+      $hStmt[ 'zWhere' ] .= ' ?';
+
+      $hStmt[ 'avValues' ][] =
+        self::fvCastForBinding( $vValue, $vContext );
+
+      } // normal value
+
+    return $hStmt;
+
+    } // fhAddValue
+
+
+  //---------------------------------------------------------------------------
   /// Prohibits `$limit`, `$skip` and `$orderby` substatements.
   ///
   /// @param $zOp
@@ -301,11 +381,13 @@ class Model {
             $hStmt['zWhere'] .= "$zAnd $zContextColumn IS " .
               ( $vValue ? 'TRUE' : 'FALSE' );
 
-          else {
-            $hStmt['zWhere'] .= "$zAnd $zContextColumn = ?";
-            $hStmt[ 'avValues' ][] =
-              self::fvCastForBinding( $vValue, $vContext );
-            }
+          else { // normal value
+
+            $hStmt['zWhere'] .= "$zAnd $zContextColumn =";
+
+            $hStmt = self::fhAddValue( $vValue, $vContext, $hStmt );
+
+            } // normal value
 
           break;
 
@@ -319,19 +401,17 @@ class Model {
 
         case '$gt':
 
-          $hStmt['zWhere'] .= "$zAnd $zContextColumn > ?";
+          $hStmt['zWhere'] .= "$zAnd $zContextColumn >";
 
-          $hStmt[ 'avValues' ][] =
-            self::fvCastForBinding( $vValue, $vContext );
+          $hStmt = self::fhAddValue( $vValue, $vContext, $hStmt );
 
           break;
 
         case '$gte':
 
-          $hStmt['zWhere'] .= "$zAnd $zContextColumn >= ?";
+          $hStmt['zWhere'] .= "$zAnd $zContextColumn >=";
 
-          $hStmt[ 'avValues' ][] =
-            self::fvCastForBinding( $vValue, $vContext );
+          $hStmt = self::fhAddValue( $vValue, $vContext, $hStmt );
 
           break;
 
@@ -366,19 +446,16 @@ class Model {
 
         case '$lt':
 
-          $hStmt['zWhere'] .= "$zAnd $zContextColumn < ?";
+          $hStmt['zWhere'] .= "$zAnd $zContextColumn <";
 
-          $hStmt[ 'avValues' ][] =
-            self::fvCastForBinding( $vValue, $vContext );
-
+          $hStmt = self::fhAddValue( $vValue, $vContext, $hStmt );
           break;
 
         case '$lte':
 
-          $hStmt['zWhere'] .= "$zAnd $zContextColumn <= ?";
+          $hStmt['zWhere'] .= "$zAnd $zContextColumn <=";
 
-          $hStmt[ 'avValues' ][] =
-            self::fvCastForBinding( $vValue, $vContext );
+          $hStmt = self::fhAddValue( $vValue, $vContext, $hStmt );
 
           break;
 
@@ -393,13 +470,13 @@ class Model {
           if ( ! ( is_array( $vValue ) && ( 2 === count( $vValue ) ) ) )
             throw new MysqlgooseError( '$mod requires [ divisor, remainder ]' );
 
-          $hStmt['zWhere'] .= "$zAnd $zContextColumn % ? = ?";
+          $hStmt['zWhere'] .= "$zAnd $zContextColumn %";
 
-          $hStmt[ 'avValues' ][] =
-            self::fvCastForBinding( $vValue[ 0 ], $vContext );
+          $hStmt = self::fhAddValue( $vValue[ 0 ], $vContext, $hStmt );
 
-          $hStmt[ 'avValues' ][] =
-            self::fvCastForBinding( $vValue[ 1 ], $vContext );
+          $hStmt['zWhere'] .= ' =';
+
+          $hStmt = self::fhAddValue( $vValue[ 1 ], $vContext, $hStmt );
 
           break;
 
@@ -413,9 +490,8 @@ class Model {
               ( $vValue ? 'TRUE' : 'FALSE' );
 
           else {
-            $hStmt['zWhere'] .= "$zAnd $zContextColumn != ?";
-            $hStmt[ 'avValues' ][] =
-              self::fvCastForBinding( $vValue, $vContext );
+            $hStmt['zWhere'] .= "$zAnd $zContextColumn !=";
+            $hStmt = self::fhAddValue( $vValue, $vContext, $hStmt );
             }
 
           break;
@@ -442,14 +518,20 @@ class Model {
 
         case '$not':
 
-          if ( is_string( $vValue ) ) { // assume regex; negate
+          if ( // treat string or $FIELD as regex
+            is_string( $vValue ) ||
+            ( is_array( $vValue ) &&
+              array_key_exists( '$FIELD', $vValue ) &&
+              is_array( $vValue[ '$FIELD' ] ) &&
+              ( 1 === count( $vValue[ '$FIELD' ] ) ) )
+            ) // treat string or $FIELD as regex
+              { // negate
 
-            $hStmt['zWhere'] .= "$zAnd $zContextColumn NOT REGEXP ?";
+              $hStmt['zWhere'] .= "$zAnd $zContextColumn NOT REGEXP";
 
-            $hStmt[ 'avValues' ][] =
-              self::fvCastForBinding( $vValue, $vContext );
+              $hStmt = self::fhAddValue( $vValue, $vContext, $hStmt );
 
-            } // assume regex; negate
+              } // negate
 
           else if ( ! is_array( $vValue ) )
             throw new MysqlgooseError(
@@ -528,13 +610,18 @@ class Model {
 
         case '$regex':
 
-          if ( ! is_string( $vValue ) )
-            throw new MysqlgooseError(
-              'specify $regex value as a string (without delimiters)' );
+          if ( ! ( is_string( $vValue ) ||
+            ( is_array( $vValue ) &&
+              array_key_exists( '$FIELD', $vValue ) &&
+              is_array( $vValue[ '$FIELD' ] ) &&
+              ( 1 === count( $vValue[ '$FIELD' ] ) ) ) ) )
+                throw new MysqlgooseError(
+                'specify $regex value as a string (without ' .
+                  'delimiters) or [ $FIELD: [ ... ] ]' );
 
-          $hStmt['zWhere'] .= "$zAnd $zContextColumn REGEXP ?";
+          $hStmt['zWhere'] .= "$zAnd $zContextColumn REGEXP";
 
-          $hStmt[ 'avValues' ][] = self::fvCastForBinding( $vValue, $vContext );
+          $hStmt = self::fhAddValue( $vValue, $vContext, $hStmt );
 
           break;
 
@@ -572,7 +659,7 @@ class Model {
 
         default:
 
-          if ( '$' == substr( $zProp, 0, 1 ) )
+          if ( ( str_starts_with( $zProp, '$' ) ) && ( '$FIELD' !== $zProp ) )
             throw new MysqlgooseError( $zProp . ' is not supported' );
 
           //  If the new context is a column definition, remember it, and
@@ -616,57 +703,58 @@ class Model {
             $hStmt['zWhere'] .= "$zAnd $zContextColumn IS " .
               ( $vValue ? 'TRUE' : 'FALSE' );
 
-          else if ( is_array( $vValue ) ) { // sub-statement
+          else if ( is_array( $vValue ) &&
+            ( ! array_key_exists( '$FIELD', $vValue ) ) )
+              { // sub-statement
 
-            $hSubstmt = $this->fvBuildSqlClauses(
-              $vNewContext, $vValue, false, $zAnd );
+              $hSubstmt = $this->fvBuildSqlClauses(
+                $vNewContext, $vValue, false, $zAnd );
 
-            $hStmt[ 'azPopulate' ] =
-              array_merge( $hStmt[ 'azPopulate' ], $hSubstmt[ 'azPopulate' ] );
+              $hStmt[ 'azPopulate' ] =
+                array_merge( $hStmt[ 'azPopulate' ], $hSubstmt[ 'azPopulate' ] );
 
-            $hStmt['zWhere'] .= $hSubstmt['zWhere'];
+              $hStmt['zWhere'] .= $hSubstmt['zWhere'];
 
-            if ( array_key_exists( 'orderby', $hSubstmt ) ) { // orderby
+              if ( array_key_exists( 'orderby', $hSubstmt ) ) { // orderby
 
-              if ( array_key_exists( 'orderby', $hStmt ) )
-                $hStmt['orderby'] .= ', ' . $hSubstmt['orderby'];
+                if ( array_key_exists( 'orderby', $hStmt ) )
+                  $hStmt['orderby'] .= ', ' . $hSubstmt['orderby'];
 
-              else
-                $hStmt['orderby'] = $hSubstmt['orderby'];
+                else
+                  $hStmt['orderby'] = $hSubstmt['orderby'];
 
-              } // orderby
+                } // orderby
 
-            if ( array_key_exists( 'skip', $hSubstmt ) ) { // skip
+              if ( array_key_exists( 'skip', $hSubstmt ) ) { // skip
 
-              if ( array_key_exists( 'skip', $hStmt ) )
-                throw new MysqlgooseError( '$skip can only appear once' );
+                if ( array_key_exists( 'skip', $hStmt ) )
+                  throw new MysqlgooseError( '$skip can only appear once' );
 
-              $hStmt['skip'] = $hSubstmt['skip'];
+                $hStmt['skip'] = $hSubstmt['skip'];
 
-              } // skip
+                } // skip
 
-            if ( array_key_exists( 'limit', $hSubstmt ) ) { // limit
+              if ( array_key_exists( 'limit', $hSubstmt ) ) { // limit
 
-              if ( array_key_exists( 'limit', $hStmt ) )
-                throw new MysqlgooseError( '$limit can only appear once' );
+                if ( array_key_exists( 'limit', $hStmt ) )
+                  throw new MysqlgooseError( '$limit can only appear once' );
 
-              $hStmt['limit'] = $hSubstmt['limit'];
+                $hStmt['limit'] = $hSubstmt['limit'];
 
-              } // limit
+                } // limit
 
-            $hStmt['avValues'] =
-              array_merge( $hStmt['avValues'], $hSubstmt['avValues']);
+              $hStmt['avValues'] =
+                array_merge( $hStmt['avValues'], $hSubstmt['avValues']);
 
-            } // sub-statement
+              } // sub-statement
 
-          else { // scalar, hopefully
+          else { // scalar or field, hopefully
 
-            $hStmt['zWhere'] .= "$zAnd $zContextColumn = ?";
+            $hStmt['zWhere'] .= "$zAnd $zContextColumn =";
 
-            $hStmt[ 'avValues' ][] =
-              self::fvCastForBinding( $vValue, $vNewContext );
+            $hStmt = self::fhAddValue( $vValue, $vNewContext, $hStmt );
 
-            } // scalar, hopefully
+            } // scalar or field, hopefully
 
         } // process condition
 
@@ -801,6 +889,13 @@ class Model {
     $hResults = $this->iGoose->fvQuery(
       "INSERT INTO `{$this->zSafeTableName}` SET {$zList}", $avValues );
 
+    if ( ! ( array_key_exists( 'affectedRows', $hResults ) &&
+      ( 0.5 < $hResults[ 'affectedRows' ] ) ) )
+        throw new MysqlgooseError( 'insert failed' );
+
+
+    //  If the created record has an ID, find and return it.
+
     $nId = (
       ( array_key_exists( 'insertId', $hResults ) &&
         ( 0 !== $hResults[ 'insertId' ] ) ) ?
@@ -811,10 +906,30 @@ class Model {
             )
       ); // $nId
 
-    if ( ! $nId )
-      throw new MysqlgooseError( 'missing insert ID' );
+    if ( $nId )
+      return $this->findById( $nId );
 
-    return $this->findById( $nId );
+
+    //  If the created record can't be found by ID, try to
+    //  find it based on all of its fields, including any
+    //  default values. If multiples are found, then any is
+    //  as good as any other, so return #0.
+
+    $this->iSchema->eachPath(
+      function( $zPathName, $hSchemaType ) use ( $hDoc ) {
+        if ( ! array_key_exists( $zPathName, $hDoc ) )
+          $hDoc[ $zPathName ] = $hSchemaType[ 'vDefault' ];
+        } // function
+      ); // eachPath()
+
+    $ahFound = $this->find( $hDoc );
+
+    $nCount = count( $ahFound );
+
+    if ( 0.5 > $nCount )
+      throw new MysqlgooseError( 'could not find document' );
+
+    return $ahFound[ 0 ];
 
     } // create
 
@@ -835,23 +950,36 @@ class Model {
   /// outer table has a field that references the primary key of the embedded
   /// table.
   ///
+  /// The special condition `$FIELD` allows one field to be compared to
+  /// another (in the same or an associated model). `$FIELD` must be a
+  /// hash with one member, the name of which is the name of the target
+  /// model and the value is the name of the column within it. Using
+  /// `$FIELD` with an associated model automatically populates the
+  /// associated model.
+  ///
   /// *Note:* The examples that follow assume a table named `customer` with
-  /// columns named `bVerified` and `zName`, and a table named `order` with
-  /// a column named `bActive` and a column (name unspecified) that provides
-  /// a foreign key to the `customer` table.
+  /// columns named `bVerified`, `dtVerified` and `zName`, and a table named
+  /// `order` with columns named `bActive` and `dtPlaced` and a column (name
+  /// unspecified) that provides a foreign key to the `customer` table.
   ///
   /// Basic example:
-  ///
-  ///   `customerModel::find( [ 'zName' => 'John Doe' ] );`
-  ///
+  ///   ```
+  ///   customerModel::find( [ 'zName' => 'John Doe' ] );
+  ///   ```
   /// Example w/automatic population:
-  ///
-  ///   `orderModel::find( [ 'customer' => [ 'bVerified' =>  true ] ] );`
-  ///
+  ///   ```
+  ///   orderModel::find( [ 'customer' => [ 'bVerified' =>  true ] ] );
+  ///   ```
   /// Example w/explicit population:
-  ///
-  ///   `orderModel::find( [ 'bActive' => true ], null,
+  ///   ```
+  ///   orderModel::find( [ 'bActive' => true ], null,
   ///       [ Mysqlgoose.POPULATE => 'customer' ] );`
+  ///   ```
+  /// Example comparing `order.dtPlaced` to `customer.dtJoined`:
+  ///   ```
+  ///   orderModel::find( [ 'dtPlaced' => [ '$lt' =>
+  ///       [ '$FIELD' => [ 'customer' => 'dtVerified' ] ] ] ] );
+  ///   ```
   ///
   /// @param $vFilter
   ///   Either a row ID number (matching the primary key field), or a hash
@@ -943,6 +1071,9 @@ class Model {
       $zFrom .= $zJoinClauses;
 
       foreach ( $azModelNames as $zModelName ) { // each model
+
+        if ( $zModelName === $this->zSafeTableName )
+          continue;
 
         $iModel = self::$hiModels[ $zModelName ];
 
