@@ -132,6 +132,23 @@ direction; for example, when you find `order` records, you can't populate
 the associated `order_product` records. Hopefully, someone will add this
 capability in the future!
 
+### Comparing Fields 
+
+The special condition `$FIELD` allows one field to be compared to another
+(in the same or an associated model). `$FIELD` must be a hash (associative
+array) with one member, the name of which is the name of the target model 
+and the value is the name of the column within it. Using `$FIELD` with an
+associated model automatically populates the associated model.
+
+```php
+//  retrieve orders created before their customer was verified.
+
+$unverified = 
+  $models['order']->find( [ 'created' => 
+    [ '$lte' => [ '$FIELD' => [ 'customer' => 'verified' ] ] ] ] );
+
+echo $unverified[ 0 ][ 'customer' ][ 'name' ];
+```
 
 ## Please Donate!
 
