@@ -116,8 +116,8 @@ INSERT INTO `review` ( `nProductId`, `zUser`, `zText`, `bVerified` ) VALUES
   ( 1, 'Andrew', 'test-verified #1', true ),
   ( 1, 'Bob', 'test-verified #2', false ),
   ( 1, 'Caroline', 'test-verified #3', null ),
-  ( 1, 'Doug', 'test-verified #4', true ),
-  ( 1, 'Elena', 'test-verified #5', false ),
-  ( 1, 'Frank', 'test-verified #6', null );
+  ( 1, 'Xavier', 'test-verified #4', true ),
+  ( 1, 'Yvonne', 'test-verified #5', false ),
+  ( 1, 'Zelda', 'test-verified #6', null );
 
 -- EOF
