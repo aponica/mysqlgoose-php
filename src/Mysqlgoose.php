@@ -7,6 +7,8 @@
 namespace Aponica\Mysqlgoose;
 
 use mysqli;
+use Throwable;
+
 use const MYSQLI_REPORT_OFF;
 
 //-----------------------------------------------------------------------------
@@ -86,15 +88,11 @@ class Mysqlgoose {
       $this->iConn = new mysqli( $hParams['host'], $hParams['user'],
                                 $hParams['password'], $hParams['database'] );
 
-      if ( $this->iConn->connect_errno )
-        throw new MysqlgooseError( $this->conn->connect_error . ' (#' .
-          $this->conn->connect_errno . ')' );
-
       $this->iConn->set_charset('utf8');
 
       }
     catch ( Throwable $iThrown ) {
-      throw new MysqlgooseError();
+      throw new MysqlgooseError( $iThrown->getMessage() );
       }
 
     } // connect
