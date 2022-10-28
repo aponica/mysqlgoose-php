@@ -10,12 +10,11 @@ return function() {
 
   $iGoose = new Mysqlgoose();
 
-  $zConfig = file_get_contents( 'tests-config/config_mysql.json' );
-
-  $iGoose->connect( json_decode( $zConfig, true ) );
+  $iGoose->connect( json_decode( file_get_contents(
+    __DIR__ . '/../tests-config/config_mysql.json' ), true ) );
 
   $hhModelDefs = json_decode( file_get_contents(
-    'tests-config/definitions.json' ), true );
+    __DIR__ . '/../tests-config/definitions.json' ), true );
 
   $hiModels = [];
 
