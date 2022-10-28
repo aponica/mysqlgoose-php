@@ -1,6 +1,6 @@
 {
   "name": "aponica/mysqlgoose-php",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "MongoDB/MongooseJS-like interface for MySQL relational databases (and probably MariaDB/Oracle/PostgreSQL/SQLServer/etc with some modification)",
   "homepage" : "https://aponica.com/docs/mysqlgoose-php",
   "funding": [ { "type": "paypal",
