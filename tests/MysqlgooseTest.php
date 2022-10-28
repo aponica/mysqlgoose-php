@@ -29,10 +29,9 @@ final class MysqlgooseTest extends TestCase {
 
     $i = new Mysqlgoose();
 
-    $this->expectError();
+    $this->expectException( Aponica\Mysqlgoose\MysqlgooseError::class );
 
-    $this->expectExceptionMessage(
-      "Access denied for user ''@'localhost' (using password: NO)" );
+    $this->expectExceptionMessageMatches( '/Access denied for user/u' );
 
     $i->connect( [ 'host' => '',
       'user' => '', 'password' => '', 'database' => '' ] );
