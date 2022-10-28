@@ -6,8 +6,6 @@
 use Aponica\Mysqlgoose;
 use PHPUnit\Framework\TestCase;
 
-set_include_path( get_include_path() . PATH_SEPARATOR . 'tests-config' );
-
 //---------------------------------------------------------------------------
 
 final class ModelTest extends TestCase {
