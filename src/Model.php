@@ -1296,7 +1296,7 @@ class Model {
       ( 1 != $hResult['affectedRows'] ) )
         throw new MysqlgooseError( $hResult[ 'affectedRows' ] . ' rows updated' );
 
-    return $this->findById( $nId, $hOptions );
+    return $this->findById( $nId, null, $hOptions );
 
     } // findByIdAndUpdate
 
