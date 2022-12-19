@@ -604,6 +604,37 @@ final class ModelTest extends TestCase {
 
   //---------------------------------------------------------------------------
 
+  public function testPopulateOnUpdate(): void {
+
+    $hOrder = self::$hiModels[ 'order' ]->create( [ 'nCustomerId' => 1 ] );
+
+    $hOP = self::$hiModels[ 'order_product' ]->
+      create( [ 'nOrderId' => $hOrder[ 'nId' ], 'nProductId' => 1 ] );
+
+    $this->assertSame( $hOrder[ 'nId' ], $hOP[ 'nOrderId' ] );
+
+    $this->assertSame( 1, $hOP[ 'nProductId' ] );
+
+    $hNow = self::$hiModels[ 'order_product' ]->
+      findByIdAndUpdate( $hOP[ 'nId' ], [ 'nOrderId' => 1 ],
+        [ Mysqlgoose\Mysqlgoose::POPULATE => [ 'order', 'product' ] ] );
+
+    $this->assertArrayHasKey( 'order', $hNow );
+
+    $this->assertArrayHasKey( 'nId', $hNow[ 'order' ] );
+
+    $this->assertSame( 1, $hNow[ 'order' ][ 'nId' ] );
+
+    $this->assertArrayHasKey('product', $hNow );
+
+    $this->assertArrayHasKey( 'nId', $hNow[ 'product' ] );
+
+    $this->assertSame( 1, $hNow[ 'product' ][ 'nId' ] );
+
+    } // testPopulateOnUpdate
+
+  //---------------------------------------------------------------------------
+
   public function testPopulateOrder(): void {
 
     $nProductId = self::$nNextProductId++;
